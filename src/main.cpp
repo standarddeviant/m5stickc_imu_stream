@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <M5StickC.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 // #include <WiFiMulti.h>
 #include <WiFiClientSecure.h>
 #include <WebSocketsServer.h>
@@ -16,6 +17,7 @@
 
 #define IMU_FETCH_PERIOD_MICROS 25000 // 1e6 micros / 40 Hz = 25e3 micros
 #define WS_SERVER_PORT 42000
+#define WS_SERVER_HOSTNAME "m5stickc-streamer"
 WebSocketsServer webSocket = WebSocketsServer(WS_SERVER_PORT);
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
@@ -71,9 +73,6 @@ void setup() {
     imu_fetch_timer_args.callback = &imu_fetch_timer_callback;
     imu_fetch_timer_args.name = "IMU-Fetch"; /* optional, but helpful when debugging */
 
-    esp_log_level_set("YO", ESP_LOG_DEBUG);        // set all components to ERROR level
-
-
     // Serial Init
     Serial.begin(115200);
 
@@ -93,20 +92,25 @@ void setup() {
         delay(100);
     }
 
+    // WebSocket Init
+    webSocket.begin();
+    webSocket.onEvent(webSocketEvent);
+
+    // DNS Init
+    if(!MDNS.begin(WS_SERVER_HOSTNAME)) {
+        Serial.println("Error starting mDNS");
+    }
+    MDNS.addService("ws", "tcp", WS_SERVER_PORT);
+
     IPAddress ip = WiFi.localIP();
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setCursor(0, 0);
     // M5.Lcd.printf("Connected to %s", WiFi.SSID());
     M5.Lcd.setCursor(0, 20);
-    M5.Lcd.printf("Connect to\n%d.%d.%d.%d:%d",
-        ip[0], ip[1], ip[2], ip[3], WS_SERVER_PORT);
-
-    // WebSocket Init
-    webSocket.begin();
-    webSocket.onEvent(webSocketEvent);
-
-    Serial.print("setup: YOYOYO!\n");
-
+    // M5.Lcd.printf("Connect to\n%d.%d.%d.%d:%d",
+    //     ip[0], ip[1], ip[2], ip[3], WS_SERVER_PORT);
+    M5.Lcd.printf("Connect to\n%s:%d",
+        WS_SERVER_HOSTNAME, WS_SERVER_PORT);
 
     // Create and Start Timer
     ESP_ERROR_CHECK(esp_timer_create(&imu_fetch_timer_args, &imu_fetch_timer));

@@ -31,7 +31,7 @@ def on_open(ws):
 
 def imu_fetch():
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://192.168.68.130:42000",
+    ws = websocket.WebSocketApp("ws://m5stickc-streamer:42000",
                             on_message = on_message,
                             on_error = on_error,
                             on_close = on_close,
