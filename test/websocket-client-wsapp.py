@@ -30,12 +30,15 @@ def on_open(ws):
     print("### opened ###")
 
 def imu_fetch():
+    # url = "ws://m5stickc-streamer:42000"
+    ws_url = "ws://192.168.68.130:42000"
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://m5stickc-streamer:42000",
-                            on_message = on_message,
-                            on_error = on_error,
-                            on_close = on_close,
-                            on_open  = on_open)
+    ws = websocket.WebSocketApp(
+        ws_url,
+        on_message = on_message,
+        on_error = on_error,
+        on_close = on_close,
+        on_open  = on_open)
     ws.run_forever()
 
 def imu_aggregate():
@@ -83,6 +86,8 @@ if __name__ == "__main__":
         imu_fetch()
     except KeyboardInterrupt:
         print("stopped fetching imu data")
+    # except Exception:
+    #     print("catching any generic exception...")
 
     imu_obj = imu_aggregate()
     imu_save(imu_obj)
