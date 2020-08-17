@@ -13,55 +13,53 @@ var connection = null;
 // var clientID = 0;
 var msgpack = msgpack5();
 var label_keys = ["ax", "ay", "az", "gx", "gy", "gz"];
+var msgpack_pkts;
+var json_pkts;
+var dtstr;
+var aggObj;
+
+function initDataVars() {
+  msgpack_pkts = [];
+  json_pkts = [];
+  dtstr = datetimeString(new Date())
+  aggObj = {
+    "ax": [], "ay": [], "az": [],
+    "gx": [], "gy": [], "gz": [],
+    "micros": []
+  };
+};
 
 // document.addEventListener("DOMContentLoaded", function () {
-  function createCharts(num_charts, chartLabels) {
-    var timeseries = [];
-    var charts = [];
-    var chartContainer = document.getElementById("charts");
+function createCharts(num_charts, chartLabels) {
+  var timeseries = [];
+  var charts = [];
+  var chartContainer = document.getElementById("charts");
 
-    for (var i = 0; i < num_charts; i++) {
-      // var height = "100";
-      // var width = "400";
-      // var label = document.createElement("span");
-      // label.classList.add("canvas-label");
-      // label.textContent = chartLabels[i];
-      // label.style.width = width;
-      // chartContainer.appendChild(label);
+  for (var i = 0; i < num_charts; i++) {
+    var ts = new TimeSeries();
+    var chart = new SmoothieChart({
+      responsive: true,
+      interpolation: 'linear',
+      millisPerLine: 100
+    });
 
-      // var canvas = document.createElement("canvas");
-      // canvas.id = "channel_" + i;
-      // canvas.style.width = width;
-      // canvas.height = 20;
-      // chartContainer.appendChild(canvas);
+    chart.streamTo(document.getElementById("channel_"+i), 1000);
+    chart.addTimeSeries(ts, {
+        strokeStyle:'rgb(255, 255, 255)',
+        lineWidth: 1
+    });
 
-      var ts = new TimeSeries();
-      var chart = new SmoothieChart({
-        responsive: true,
-        interpolation: 'linear',
-        millisPerLine: 100
-      });
+    timeseries.push(ts);
+    charts.push(chart)
+  }
+  return [timeseries, charts];
+} // end function createCharts
 
-      chart.streamTo(document.getElementById("channel_"+i), 1000);
-      chart.addTimeSeries(ts, {
-          strokeStyle:'rgb(255, 255, 255)',
-          lineWidth: 1
-      });
-
-      timeseries.push(ts);
-      charts.push(chart)
-    }
-    return [timeseries, charts];
-    // return timeseries;
-
-  } // end function createCharts
-
-// }); // end document.addEventListener("DOMContentLoaded", ...)
-
-
-function start_stream_func() {
+function startStream() {
   var serverUrl;
   var scheme = "ws";
+
+  initDataVars();
 
   // If this is an HTTPS connection, we have to use a secure WebSocket
   // connection too, so add another "s" to the scheme.
@@ -88,18 +86,26 @@ function start_stream_func() {
 
   connection.onmessage = function(evt) {
     console.log("***ONMESSAGE");
-    console.log(charts.length)
     // var f = document.getElementById("some_html_identifier").contentDocument;
-
     console.log(typeof evt.data);
-    console.log(evt.data);
+
+
+    // add msgpack pkt to list
+    msgpack_pkts.push(evt.data);
 
     var obj;
     // process websocket buffer and msgpack object
     evt.data.arrayBuffer().then(function(data) {
       // decode MsgPack object from arrayBuffer in to JSON object
       obj = msgpack.decode(data);
-      console.log(obj);
+
+      // add to msgpack pkt to list
+      json_pkts.push(obj);
+
+      // add elements to each list of aggregated objects
+      Object.keys(obj).forEach(function(k, i){
+        aggObj[k].push(...obj[k]);
+      });
 
       // loop through label_keys and plots
       label_keys.forEach(function(label_key, label_key_ix) {
@@ -112,7 +118,6 @@ function start_stream_func() {
 
         // if last label, then update
         if(label_key_ix == label_keys.length - 1) {
-          // console.log(g_time);
           g_time = loc_time;
         }
 
@@ -124,13 +129,13 @@ function start_stream_func() {
   console.log("***CREATED ONMESSAGE");
 
   resizeCanvas();
-} // end start_stream_func
+} // end startStream
 
 function resizeCanvas() {
   for (var i = 0; i < label_keys.length; i++) {
     var canvs = document.getElementById("channel_" + i);
-    var w = window.innerWidth * 0.40;
-    var h = window.innerHeight * 0.20;
+    // var w = window.innerWidth * 0.40;
+    // var h = window.innerHeight * 0.20;
     // if(w < 1000.0 && h < 500.0) {
     //   canvs.width = w;
     //   canvs.width = h;
@@ -138,15 +143,41 @@ function resizeCanvas() {
     // }
     // console.log(w)
     // console.log(h)
-    canvs.width = w
-    canvs.height = h
+    canvs.width = 400;
+    canvs.height = 200;
   }
+}
+
+function downloadObjectAsJson(exportObj, exportName){
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
+  var downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href",     dataStr);
+  downloadAnchorNode.setAttribute("download", exportName + ".json");
+  document.body.appendChild(downloadAnchorNode); // required for firefox
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+}
+
+function zeroPad(nNum, nPad) {
+  return ((Math.pow(10, nPad) + nNum) + '').slice(1);
+};
+
+function datetimeString(dtObj) {
+  let _dtstr = "" + dtObj.getFullYear() + dtObj.getMonth() + zeroPad(dtObj.getMonth()+1, 2) + "-"
+                 + dtObj.getHours() + zeroPad(dtObj.getMinutes(), 2) + zeroPad(dtObj.getSeconds(), 2)
+  return _dtstr;
+}
+
+function downloadImuJson() {
+  var fname = "m5c-imu-" + dtstr;
+  console.log(fname)
+  downloadObjectAsJson(aggObj, fname);
 }
 
 </script>
 
 </head>
-<body onload="start_stream_func();">
+<body onload="startStream();">
 
   <p>
     This is a page to receive IMU data from an M5Stick-C device. 
@@ -160,21 +191,17 @@ function resizeCanvas() {
   </p>
 
   <p>
-  <input type="button" name="start_stream" value="Restart Stream" onclick="start_stream_func()">
-  <input type="button" name="resize" value="Resize Charts" onclick="resizeCanvas()">
+  <input type="button" name="start_stream" value="Reset Recording" onclick="initDataVars()">
+  <!-- <input type="button" name="resize" value="Resize Charts" onclick="resizeCanvas()"> -->
+  <input type="button" name="downloadJson" value="Download (JSON)" onclick="downloadImuJson()">
   </p>
 
-  ax <canvas id="channel_0"></canvas>
-  gx <canvas id="channel_3"></canvas>
-  <br>
-
-  ay <canvas id="channel_1"></canvas>
-  gy <canvas id="channel_4"></canvas>
-  <br>
-
-  az <canvas id="channel_2"></canvas>
-  gz <canvas id="channel_5"></canvas>
-  <br>
+  ax <canvas id="channel_0"></canvas><br>
+  ay <canvas id="channel_1"></canvas><br>
+  az <canvas id="channel_2"></canvas><br>
+  gx <canvas id="channel_3"></canvas><br>
+  gy <canvas id="channel_4"></canvas><br>
+  gz <canvas id="channel_5"></canvas><br>
 
 </body>
 </html>
