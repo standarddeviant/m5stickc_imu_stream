@@ -17,6 +17,7 @@ var msgpack_pkts;
 var json_pkts;
 var dtstr;
 var aggObj;
+var aggBuf;
 
 function initDataVars() {
   msgpack_pkts = [];
@@ -27,6 +28,7 @@ function initDataVars() {
     "gx": [], "gy": [], "gz": [],
     "micros": []
   };
+  aggBuf = new Uint8Array([]);
 };
 
 // document.addEventListener("DOMContentLoaded", function () {
@@ -54,6 +56,20 @@ function createCharts(num_charts, chartLabels) {
   }
   return [timeseries, charts];
 } // end function createCharts
+
+function concatTypedArrays(a, b) { // a, b TypedArray of same type
+    var c = new (a.constructor)(a.length + b.length);
+    c.set(a, 0);
+    c.set(b, a.length);
+    return c;
+}
+
+function concatBuffers(a, b) {
+    return concatTypedArrays(
+        new Uint8Array(a.buffer || a), 
+        new Uint8Array(b.buffer || b)
+    ).buffer;
+}
 
 function startStream() {
   var serverUrl;
@@ -86,16 +102,19 @@ function startStream() {
 
   connection.onmessage = function(evt) {
     console.log("***ONMESSAGE");
-    // var f = document.getElementById("some_html_identifier").contentDocument;
-    console.log(typeof evt.data);
-
 
     // add msgpack pkt to list
     msgpack_pkts.push(evt.data);
 
+    // create local var to work with JSON object
     var obj;
+
     // process websocket buffer and msgpack object
     evt.data.arrayBuffer().then(function(data) {
+      // console.log(aggBuf.byteLength)
+      // console.log(data.byteLength)
+      aggBuf = concatBuffers(aggBuf, data)
+
       // decode MsgPack object from arrayBuffer in to JSON object
       obj = msgpack.decode(data);
 
@@ -148,6 +167,18 @@ function resizeCanvas() {
   }
 }
 
+
+// datetime string gen functions
+function zeroPad(nNum, nPad) {
+  return ((Math.pow(10, nPad) + nNum) + '').slice(1);
+};
+function datetimeString(dtObj) {
+  let _dtstr = "" + dtObj.getFullYear() + dtObj.getMonth() + zeroPad(dtObj.getMonth()+1, 2) + "-"
+                 + dtObj.getHours() + zeroPad(dtObj.getMinutes(), 2) + zeroPad(dtObj.getSeconds(), 2)
+  return _dtstr;
+}
+
+// JSON download functions
 function downloadObjectAsJson(exportObj, exportName){
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
   var downloadAnchorNode = document.createElement('a');
@@ -157,21 +188,45 @@ function downloadObjectAsJson(exportObj, exportName){
   downloadAnchorNode.click();
   downloadAnchorNode.remove();
 }
-
-function zeroPad(nNum, nPad) {
-  return ((Math.pow(10, nPad) + nNum) + '').slice(1);
-};
-
-function datetimeString(dtObj) {
-  let _dtstr = "" + dtObj.getFullYear() + dtObj.getMonth() + zeroPad(dtObj.getMonth()+1, 2) + "-"
-                 + dtObj.getHours() + zeroPad(dtObj.getMinutes(), 2) + zeroPad(dtObj.getSeconds(), 2)
-  return _dtstr;
-}
-
 function downloadImuJson() {
   var fname = "m5c-imu-" + dtstr;
   console.log(fname)
   downloadObjectAsJson(aggObj, fname);
+}
+
+// Msgpack download functions
+// var saveByteArray = (function () {
+//     var a = document.createElement("a");
+//     document.body.appendChild(a);
+//     a.style = "display: none";
+//     return function (data, name) {
+//         var blob = new Blob(data, {type: "octet/stream"}),
+//             url = window.URL.createObjectURL(blob);
+//         a.href = url;
+//         a.download = name;
+//         a.click();
+//         window.URL.revokeObjectURL(url);
+//     };
+// }());
+function downloadBufAsBinary(exportBuf, exportName) {
+  var blob, url;
+  blob = new Blob([exportBuf], {type: 'application/octet-stream'});
+  url = window.URL.createObjectURL(blob);
+  var downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href",     url);
+  downloadAnchorNode.setAttribute("download", exportName + ".bin");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.style = 'display: none';
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+  setTimeout(function() {
+    return window.URL.revokeObjectURL(url);
+  }, 1000);
+};
+function downloadImuMsgPack() {
+  var fname = "m5c-imu-" + dtstr;
+  console.log(fname)
+  downloadBufAsBinary(aggBuf, fname);
 }
 
 </script>
@@ -194,6 +249,7 @@ function downloadImuJson() {
   <input type="button" name="start_stream" value="Reset Recording" onclick="initDataVars()">
   <!-- <input type="button" name="resize" value="Resize Charts" onclick="resizeCanvas()"> -->
   <input type="button" name="downloadJson" value="Download (JSON)" onclick="downloadImuJson()">
+  <input type="button" name="downloadMsgPack" value="Download (MsgPack)" onclick="downloadImuMsgPack()">
   </p>
 
   ax <canvas id="channel_0"></canvas><br>
