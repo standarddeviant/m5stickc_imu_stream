@@ -3,7 +3,19 @@
 <head>
 <title>M5Stick-C IMU Demo</title>
 <meta charset="utf-8">
-<!-- <link href="../shared.css" rel="stylesheet"> -->
+<style>
+canvas {
+  background-color: white; 
+  width: 100%;
+  height: auto;
+}
+.row.content {
+  width: 100%;
+  height: auto;
+  margin: auto;
+}
+</style>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/msgpack5/4.2.0/msgpack5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/smoothie@1.35.0/smoothie.min.js"></script>
 <script type="text/javascript">
@@ -152,7 +164,7 @@ function startStream() {
 
 function resizeCanvas() {
   for (var i = 0; i < label_keys.length; i++) {
-    var canvs = document.getElementById("channel_" + i);
+    // var canvs = document.getElementById("channel_" + i);
     // var w = window.innerWidth * 0.40;
     // var h = window.innerHeight * 0.20;
     // if(w < 1000.0 && h < 500.0) {
@@ -162,8 +174,8 @@ function resizeCanvas() {
     // }
     // console.log(w)
     // console.log(h)
-    canvs.width = 400;
-    canvs.height = 200;
+    // canvs.width = 400;
+    // canvs.height = 200;
   }
 }
 
@@ -231,33 +243,67 @@ function downloadImuMsgPack() {
 
 </script>
 
+<title>M5Stick-C IMU Demo</title>
+
 </head>
 <body onload="startStream();">
 
-  <p>
-    This is a page to receive IMU data from an M5Stick-C device. 
-    The M5Stick-C device contains an ESP32 that streams IMU data with a WebSockets.
-    The ESP32 inside the M5Stick-C maintains a WebSocket server that supports multiple WebSocket clients - like this web page.
-    For efficiency, the data is packaged up with msgpack, which is like a binary version of JSON.
-  </p>
+  <div class="w-100 mh-100 p-3" style="background-color: #eee;">
+    <div class="row">
+      <div class="col">
+        <h3>M5Stick-C IMU Demo</h3>
+        <p>
+          <li>This is a page to receive IMU data from an M5Stick-C device. 
+          <li>The M5Stick-C device contains an ESP32 microcontroller that streams IMU data with a WebSockets.
+          <li>An IMU is an Inertial Motion Unit and contains an accelerometer and a gyroscope.
+          <li>The ESP32 inside the M5Stick-C maintains a WebSocket server that supports multiple WebSocket clients - like this web page.
+          <li>For efficiency, the data is packaged up with msgpack, which is like a binary version of JSON.
+        </p>
+      
+        <p class="mdn-disclaimer">
+          This example is offered as-is for demonstration purposes only.
+        </p>
+      
+        <p>
+        <input type="button" name="start_stream" value="Reset Recording" onclick="initDataVars()">
+        <!-- <input type="button" name="resize" value="Resize Charts" onclick="resizeCanvas()"> -->
+        <input type="button" name="downloadJson" value="Download (JSON)" onclick="downloadImuJson()">
+        <input type="button" name="downloadMsgPack" value="Download (MsgPack)" onclick="downloadImuMsgPack()">
+        </p>
+      </div>
+    </div>
+  
 
-  <p class="mdn-disclaimer">
-    This example is offered as-is for demonstration purposes only.
-  </p>
+    <!-- X-ROW -->
+    <div class="row">
+      <div class="col">
+        Accelerometer-X <br><canvas id="channel_0"></canvas><br>
+      </div>
+      <div class="col">
+        Gyroscope-X     <br><canvas id="channel_3"></canvas><br>
+      </div>
+    </div>
 
-  <p>
-  <input type="button" name="start_stream" value="Reset Recording" onclick="initDataVars()">
-  <!-- <input type="button" name="resize" value="Resize Charts" onclick="resizeCanvas()"> -->
-  <input type="button" name="downloadJson" value="Download (JSON)" onclick="downloadImuJson()">
-  <input type="button" name="downloadMsgPack" value="Download (MsgPack)" onclick="downloadImuMsgPack()">
-  </p>
+    <!-- Y-ROW -->
+    <div class="row">
+      <div class="col">
+        Accelerometer-Y <br><canvas id="channel_1"></canvas><br>
+      </div>
+      <div class="col">
+        Gyroscope-Y     <br><canvas id="channel_4"></canvas><br>
+      </div>
+    </div>
 
-  ax <canvas id="channel_0"></canvas><br>
-  ay <canvas id="channel_1"></canvas><br>
-  az <canvas id="channel_2"></canvas><br>
-  gx <canvas id="channel_3"></canvas><br>
-  gy <canvas id="channel_4"></canvas><br>
-  gz <canvas id="channel_5"></canvas><br>
+    <!-- Y-ROW -->
+    <div class="row">
+      <div class="col">
+        Accelerometer-Z <br><canvas id="channel_2"></canvas><br>
+      </div>
+      <div class="col">
+        Gyroscope-Z     <br><canvas id="channel_5"></canvas><br>
+      </div>
+    </div>
+</div>
 
 </body>
 </html>
