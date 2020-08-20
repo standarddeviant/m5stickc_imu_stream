@@ -95,8 +95,8 @@ function startStream() {
     scheme += "s";
   }
 
-  // serverUrl = scheme + "://" + document.location.hostname + ":6502";
-  serverUrl = scheme + "://" + "m5c-imu" + ":42000";
+  // serverUrl = scheme + "://" + "m5c-imu" + ":42000";
+  serverUrl = "ws" + "://" + "m5c-imu" + ":42000";
 
   connection = new WebSocket(serverUrl);
   console.log("***CREATED WEBSOCKET");
